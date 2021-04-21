@@ -63,11 +63,12 @@ static int window_col;
 static int score = 0;
 static int snake_len = 3;
 static int gameTime = 0;           // Tracks how many iterations of the while loop have been performed.
-static char key = 'd';
+static char key = 'd';             // change to some random
+static int mode = true;            // 1 = true, 0 = false
 
 
 /* snake head location */
-int head_y = 5;
+int head_y = 10;
 int head_x = 10;
 
 /* logic */
@@ -126,16 +127,19 @@ int main(){
     /* get screen dimensions, alternatively could use LINES and COLS from curses */
     pit_size();
     /* draw the border */
-    init_pit_border(window_col, window_row);
+    init_pit_border(window_row, window_col);
+    /* set random initial direction */
+    key = choose_random_direction();
 
     /* setup the sleep timer */
     speed.tv_sec = 0;
     speed.tv_nsec = 50000000;   // 0.05 seconds in nanoseconds
+    //speed.tv_nsec = 10000000;
 
     int ticks = 0;              // Keeps track of when checks are performed in the game. When ticks == 0, progress the game forward by 1 time unit.
     int timeUnit = 10;          // A timeUnit consists of x amount of ticks. So in this case, 8 ticks == 1 timeUnit.
 
-    // For debugging purposes. 
+    /* For debugging purposes. */
     //int gameTime = 0;           // Tracks how many iterations of the while loop have been performed.
     char gameTimeStr[6];        // Used to store gameTime as a string.
     char input = 'd';             // The key the user pressed.
@@ -145,7 +149,7 @@ int main(){
     init_snake(head_y, head_x, key);
 
     // The draw loop
-    while(1) {
+    while(mode) {
         noecho();
         // Wait for user inputs. If the user inputs nothing, then getch() returns an ERR. Break out of this loop when the user inputs something.
         while ((input = getch()) == ERR) {
@@ -170,6 +174,12 @@ int main(){
             ticks++;
 
             if (ticks % timeUnit == 0) {
+                // check for collisions
+                if (head->row == 1 || head->row == window_row-1){
+                    break;
+                } else if (head->column == 1 || head->column == window_col-2){
+                    break;
+                }
                 // One time unit has passed. Increment time elapsed
                 time_event(key);
                 ticks = 0;
@@ -222,7 +232,6 @@ int main(){
             key = input;
         }
         gameTime++;
-        //time_event(key);
         ticks = 0;
     }
     /* wait for user input */
@@ -256,7 +265,7 @@ int main(){
  *  Method: matrix of array, populated by nested for loops
  *  Returns: grid matrix printed to terminal
  */
-void init_pit_border(int x, int y) {
+void init_pit_border(int y, int x) {
     addstr("Welcome to Snake  |  Clock: ------  |  Ticks: --  |  Direction: -----  |  Last Pressed: -  |  Press Ctrl-C to exit.\n");    // name of game, score, space for user inputs
     /* place border tokens in appropriate cells */
     for (int i = 1; i < y; i++) {
@@ -377,35 +386,25 @@ void init_snake(int y, int x, char direction){
     /* create starter snake */
     int node_y = y;
     int node_x = x;
-    eat_fruit(node_y, node_x);
-    for(int i = 0; i < 4; i++) {
+    //eat_fruit(node_y, node_x);
+    for(int i = 0; i < 3; i++) {
         if (direction == 'w') {
             node_y = node_y - 1;
         } else if (direction == 's') {
             node_y = node_y + 1;
         } else if (direction == 'a') {
-            node_x = node_x + 1;
-        } else if (direction == 'd') {
             node_x = node_x - 1;
+        } else if (direction == 'd') {
+            node_x = node_x + 1;
         }
         eat_fruit(node_y,node_x);
         // eatfruit will handle pointers, handle tail coordinates here.
         tail->row = node_y;
         tail->column = node_x;
     }
-    /* print starter snake */
-    struct node* scanner = head;
-    while(scanner != tail) {
-        move(scanner->row,scanner->column);
-        addstr("o");
-        scanner = scanner->prev;
-    }
     // reset head coordinates after scanning linked list.
     head->row = y;
     head->column = x;
-    // draw snake head
-    addstr("O");
-    refresh();
 }
 
 void move_snake(int y, int x){
@@ -455,7 +454,6 @@ void auto_move(){
         move(head->row, head->column);
     }
 }
-
 /***********************************************************************************************************************
 *  LOGIC
 *  1) random function for start direction
