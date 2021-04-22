@@ -1,11 +1,7 @@
 /***********************************************************************************************************************
 *                                                                                                                      *
 *  - SNAKE GAME in C -                                                                                                 *
-<<<<<<< revisions
 *  by Abigail Fenerty, Nick Sabia, Justin Merville, Jacob Pelletier, Mateusz Mirga                                                   *
-=======
-*  by Abigail Fenerty, Nick Sabia, Justin Merville, Jacob Pelletier                                                    *
->>>>>>> matt
 *  CS 355 Systems Programming final project, Spring 2021.                                                              *
 *                                                                                                                      *
 *  To run: 1) compile 2) execute compiled code 3) follow prompts                                                       *
@@ -139,27 +135,23 @@ int main(){
     int ticks = 0;              // Keeps track of when checks are performed in the game. When ticks == 0, progress the game forward by 1 time unit.
     int timeUnit = 10;          // A timeUnit consists of x amount of ticks. So in this case, 8 ticks == 1 timeUnit.
 
-    // For debugging purposes.
+    // For debugging purposes. 
     //int gameTime = 0;           // Tracks how many iterations of the while loop have been performed.
     char gameTimeStr[6];        // Used to store gameTime as a string.
     char input = 'd';             // The key the user pressed.
     char keyStr[4];             // Used to store key as a string.
     char ticksStr[2];           // Used to store ticks as a string.
-    //<<<<<<< revisions
     keypad(stdscr,TRUE);        //Handel arrow input MM
-    //=======
-    //>>>>>>> matt
 
     init_snake(head_y, head_x, key);
 
     // The draw loop
     while(1) {
         noecho();
-        //<<<<<<< revisions
-                input =getch();
+        input =getch();
         // Handling of user input: Only specified inputs receive a reaction; Wrong input or no input goes to default case (no input) MM
         switch(input){
-            case (char)KEY_LEFT:
+            case (char)KEY_LEFT:           
             case 'a':
                 // Draw the direction moved
                 move(0, DIRECTION_POS);
@@ -213,95 +205,16 @@ int main(){
 
                 // send tokens for border from buffer to terminal
                 refresh();
-
+                
 
                 if (ticks % timeUnit == 0) {
-                    // One time unit has passed. Increment time elapsed
-                    time_event(key);
-                    ticks = 0;
-                }
-
-        }
-
-        //=======
-        // Wait for user inputs. If the user inputs nothing, then getch() returns an ERR. Break out of this loop when the user inputs something.
-        while ((input = getch()) == ERR) {
-            // Draw the current time elapsed
-            move(0, CLOCK_POS);
-            sprintf(gameTimeStr, "%d", gameTime); // Convert the integer from the gameTime counter into a string.
-            addstr(gameTimeStr);
-
-            // Draw the current number of ticks
-            move(0, TICK_POS);
-            sprintf(ticksStr, "%d", ticks); // Convert the integer from ticks into a string.
-            addstr(ticksStr);
-
-            // Reset cursor position
-            move(window_row-1, window_col-1);
-
-            // Wait a half a second. This sleep does not block interrupts.
-            nanosleep(&speed, &rem);
-
-            // send tokens for border from buffer to terminal
-            refresh();
-            ticks++;
-
-            if (ticks % timeUnit == 0) {
                 // One time unit has passed. Increment time elapsed
                 time_event(key);
                 ticks = 0;
-            }
+                }
+                
         }
-        // Handle user input
-        if (input == 'w') {
-            // Draw the direction moved
-            move(0, DIRECTION_POS);
-            addstr("UP   ");
 
-        }
-        if (input == 'a') {
-            // Draw the direction moved
-            move(0, DIRECTION_POS);
-            addstr("LEFT ");
-        }
-        if (input == 's') {
-            // Draw the direction moved
-            move(0, DIRECTION_POS);
-            addstr("DOWN ");
-        }
-        if (input == 'd') {
-            // Draw the direction moved
-            move(0, DIRECTION_POS);
-            addstr("RIGHT");
-        }
-        refresh();
-        // Draw statistics
-        // Draw the current time elapsed
-        move(0, CLOCK_POS);
-        sprintf(gameTimeStr, "%d", gameTime); // Convert the integer from the gameTime counter into a string.
-        addstr(gameTimeStr);
-
-        // Draw the current number of ticks
-        move(0, TICK_POS);
-        sprintf(ticksStr, "%d", ticks); // Convert the integer from ticks into a string.
-        addstr(ticksStr);
-
-        // Draw the last key pressed
-        move(0, LAST_PRESSED_POS);
-        sprintf(keyStr, "%c", key); // Convert the key char into a string.
-        addstr(keyStr);
-
-        // send tokens for border from buffer to terminal
-        refresh();
-
-        // Since the player has moved, advance forward in time.
-        if (input == 'a' || input == 'w' || input == 'd' || input == 's') {
-            key = input;
-        }
-        gameTime++;
-        //time_event(key);
-        ticks = 0;
-        //>>>>>>> matt
     }
     /* wait for user input */
     //getch();
@@ -628,7 +541,4 @@ void end_snake(int signum) {
     endwin();       // Terminate curses window
     tty_mode(1);    // Restore terminal settings
     exit(1);        // End the program
-    //<<<<<<< revisions
-}
-//=======
-//>>>>>>> matt
+} 
