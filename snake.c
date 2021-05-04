@@ -27,62 +27,70 @@
 #define STDIN_FD 0
 
 /* Statistics cursor positions */
-#define SCORE_POS 26
-#define DIRECTION_POS 75
+#define SCORE_POS 28
+#define TROPHY_TIME_POS 50
+#define TROPHY_EXPIRE_POS 73
 
 /* Pause menu */
 #define PAUSE_MSG_LEN 32
+/* timing (1 second = 10 trophyUnits) */
+#define TROPHY_MAX 90
+#define TROPHY_MIN 10
+#define ORIG_TIME_UNIT 128
 /** prototypes **/
 /* RE: snake pit */
 void pit_size();
 void init_pit_border();
 /* RE: snake */
-void eat_fruit(int y, int x);
 void init_snake(int, int);
 void move_snake();
-void shorten_tail();
 void detect_collisions();
-void move_snake_2();
 void grow_snake(int);
 /* RE: logic */
 char choose_random_direction();
 void game_condition(int option);
 void time_event();
+void print_score();
 /* RE: Input */
 void tty_mode (int action);
 void set_settings();
 void set_nodelay_mode();
-int get_movement_input();
 void end_snake(int signum);
 /* Trophies */
 void init_trophy();
-struct trophy new_trophy();
+void new_trophy();
 void print_trophy();
 int snake_hit_trophy();
+//void print_trophy_pos();
 /** statics, structs, and constants **/
 /* window dimensions*/
-static int window_row;
-static int window_col;
+static int window_row = 0;
+static int window_col = 0;
 /* game stats */
-static int win_condition;
+static int win_condition = 0;
 static int score = 0;
-static char key;
+char gameScoreStr[12];
+static char key = 'w';
 short mode = 1;                       // 1 = true, 0 = false
 unsigned int gameTime = 0;            // Tracks how many iterations of the while loop have been performed.
 unsigned short ticks = 0;             // Keeps track of when checks are performed in the game. When ticks == 0, progress the game forward by 1 gameunit.
-unsigned int timeUnit = 128;          // A timeUnit consists of x amount of ticks. So in this case, 8 ticks == 1 timeUnit.
+unsigned short timeUnit = 128;          // A timeUnit consists of x amount of ticks. So in this case, 8 ticks == 1 timeUnit.
+/* Trophy stats */
+char trophyXStr[6];
+char trophyYStr[6];
 // for trophy regeneration
-unsigned int trophyTime = 0;
+unsigned short trophyTime = 0;
 unsigned short trophyTicks = 0;
-unsigned int trophyUnit = 128;
+unsigned short trophyUnit = ORIG_TIME_UNIT;
 // for random intervals of trophy
-//static int trophyInterval;
+unsigned int trophyExpires = 0;
+unsigned int speedUpInterval = 0;
 /* snake head location */
-int head_y;                     // TODO: change to random
-int head_x;                    // TODO: change to random
+int head_y = 0;
+int head_x = 0;
 /* logic */
-static short dirY;
-static short dirX;
+static short dirY = 0;
+static short dirX = 0;
 /* timing */
 struct timespec speed, rem; // speed governs the rate at which the screen refreshes. rem is unused, but will hold the time saved from the user's interupt signal
 /*
@@ -134,8 +142,9 @@ int main(){
     curs_set(0);
     /* get screen dimensions, alternatively could use LINES and COLS from curses */
     pit_size();
-    /* get half of perimeter for win condition */
+    /* get half of area for win condition */
     win_condition = ( (2 * window_row) + (2 * window_col) / 2);
+    speedUpInterval = win_condition / (ORIG_TIME_UNIT/2); // Calculate the score interval at which the game should increase its speed.
     /* draw the border */
     init_pit_border(window_col, window_row);
     /* center the snake */
@@ -146,15 +155,13 @@ int main(){
 
     /* setup the sleep timer by Nick Sabia*/
     speed.tv_sec = 0;
-    speed.tv_nsec = 781250; // 1/128th of a second in nanoseconds
-
-    char gameScoreStr[99];      // store score
+    speed.tv_nsec = 781250;     // 1/128th of a second in nanoseconds
 
     char input;                 // The key the user pressed.
 
     /* use key pad  by Mateusz Mirga   */
-    keypad(stdscr,TRUE);        //Handel arrow input MM
-    /* init snake of size 5 */
+    keypad(stdscr,TRUE);        //Handle arrow input MM
+    /* init snake of size 3 */
     init_snake(head_y, head_x);
     /* Create the first trophy, but don't display it yet.
      * To avoid the trophy accidentally getting erased after the pause text disappears,
@@ -162,6 +169,7 @@ int main(){
      */
     init_trophy();
     new_trophy();
+
     /* Print initial pause message */
     move(window_row / 2, window_col / 2 - PAUSE_MSG_LEN/2);
     addstr("Press any key to start playing!");
@@ -181,9 +189,6 @@ int main(){
     /* Print the trophy */
     print_trophy();
     
-    // assign trophy interval
-    int trophyInterval = (rand() % 9) + 1;
-    
     /* The draw loop */
     while (mode) {
         /*
@@ -194,72 +199,62 @@ int main(){
         while ((input = getch() ) == ERR) {
             nanosleep(&speed, &rem);
             ticks++;
+            trophyTicks++;
+
             if (ticks % timeUnit == 0) {
                 // One time unit has passed. Increment time elapsed
                 time_event();
             }
-            trophyTicks++;
-            if (trophyTicks % trophyUnit  == 0){
+            if (trophyTicks % trophyUnit == 0){
                 trophyTime++;
                 trophyTicks = 0;
             }
-        }
-
-        if (trophyTime % 9 == trophyInterval){   // time mod 9 should be be an int from 1-9
-            // delete old
-            move(trophy->row, trophy->column);
-            addstr(" ");
-            // add new
-            new_trophy();
-            print_trophy();
-            trophyInterval = (rand() % 9) + 1;  // assign new interval
+            if (trophyTime > trophyExpires) {   // time mod 9 should be be an int from 1-9
+                // delete old
+                move(trophy->row, trophy->column);
+                addstr(" ");
+                // add new
+                new_trophy();
+                print_trophy();
+            }
         }
 
         // Handling of user input: Only specified inputs receive a reaction; Wrong input or no input goes to default case (no input) MM
         switch (input) {
             case (char) KEY_LEFT:
             case 'a':
-                // Draw the direction moved
-                move(0, DIRECTION_POS);
-                addstr("LEFT ");
                 /* Sets the last key pressed and the direction variables used to move the snake. */
-                key = 'a';
+                key = 'a'; // LEFT
                 dirY = 0;
                 dirX = -1;
+
                 /* Go forward in time */
                 time_event();
                 break;
             case (char) KEY_DOWN:
             case 's':
-                // Draw the direction moved
-                move(0, DIRECTION_POS);
-                addstr("DOWN ");
                 /* Sets the last key pressed and the direction variables used to move the snake. */
-                key = 's';
+                key = 's'; // DOWN
                 dirY = 1;
                 dirX = 0;
+
                 /* Go forward in time */
                 time_event();
                 break;
             case (char) KEY_UP:
             case 'w':
-                // Draw the direction moved
-                move(0, DIRECTION_POS);
-                addstr("UP   ");
                 /* Sets the last key pressed and the direction variables used to move the snake. */
-                key = 'w';
+                key = 'w'; // UP
                 dirY = -1;
                 dirX = 0;
+
                 /* Go forward in time */
                 time_event();
                 break;
             case (char) KEY_RIGHT:
             case 'd':
-                // Draw the direction moved
-                move(0, DIRECTION_POS);
-                addstr("RIGHT");
                 /* Sets the last key pressed and the direction variables used to move the snake. */
-                key = 'd';
+                key = 'd'; // RIGHT
                 dirY = 0;
                 dirX = 1;
 
@@ -272,11 +267,6 @@ int main(){
             default:
                 break;
         }
-
-
-        move(0, SCORE_POS);
-        sprintf(gameScoreStr, "%d", score); // Convert the integer from the Score counter into a string.
-        addstr(gameScoreStr);
 
         // send tokens for border from buffer to terminal
         refresh();
@@ -294,14 +284,14 @@ int main(){
  *  Returns: grid matrix printed to terminal
  */
 void init_pit_border(int x, int y) {
-    addstr("Welcome to Snake  | Score ------ | Press Space to exit. | Direction: \n");
+    addstr("  Welcome to Snake  | Score ------ | Trophy Time: ---- | Trophy Expires: ---- | Press Space to exit.\n");
     /* place border tokens in appropriate cells */
     for (int i = 1; i < y; i++) {
-        for (int j = 0; j < x-1; j++) {
+        for (int j = 0; j < x; j++) {
             move(i, j);
             if (i == 1 || i == y - 1)
                 addstr("X");
-            else if (j == 0 || j == x - 2)
+            else if (j == 0 || j == x - 1)
                 addstr("X");
         }
     }
@@ -356,7 +346,7 @@ void init_snake (int start_y, int start_x) {
     head->row = start_y;
     head->column = start_x;
     // Add some starter snake pieces to the snake.
-    grow_snake(3);
+    grow_snake(1);
 }
 /* grow_snake()
  * Purpose: Grows the snake by x snake pieces.
@@ -417,7 +407,7 @@ void move_snake() {
     // Avoid leaving a trail behind the snake.
     move(placeholder_y, placeholder_x);
     addstr(" ");
-    refresh();
+    //refresh();
 }
 /*
  * Purpose: Checks if the snake ran into itself.
@@ -449,7 +439,7 @@ int snake_hit_self() {
 */
 void detect_collisions(){
     /* check for border collisions */
-    if (head->row == 1 || head->row == LINES-1 || head->column == 0 || head->column == COLS-2){
+    if (head->row == 1 || head->row == LINES-1 || head->column == 0 || head->column == COLS-1){
         game_condition(1);
     }
     /* check for running into itself */
@@ -458,7 +448,12 @@ void detect_collisions(){
     }
     /* check for trophy collision */
     if (snake_hit_trophy()) {
-        game_condition(3);
+        if (score >= win_condition){
+            game_condition(5);
+        }
+        else {
+            game_condition(3);
+        }
     }
 }
 /***********************************************************************************************************************
@@ -520,6 +515,7 @@ void game_condition(int option){
             /* snake reaches trophy */
         case(3):
             grow_snake(trophy->value);
+            print_score();
             new_trophy();
             print_trophy();
             break;
@@ -551,10 +547,33 @@ void time_event(){
     gameTime++;
     move_snake();
     detect_collisions();
-    if (score >= win_condition){
-        game_condition(5);
-    }
+
+    // Clear the old numbers
+    move(0, TROPHY_TIME_POS);
+    addstr("    ");
+    move(0, TROPHY_EXPIRE_POS);
+    addstr("    ");
+    
+    // Print updated trophy and expire times
+    char trophyTimeStr[10];
+    move(0, TROPHY_TIME_POS);
+    sprintf(trophyTimeStr, "%d", trophyTime); // Convert the integer from the Score counter into a string.
+    addstr(trophyTimeStr);
+
+    char trophyExpiresStr[10];
+    move(0, TROPHY_EXPIRE_POS);
+    sprintf(trophyExpiresStr, "%d", trophyExpires); // Convert the integer from the Score counter into a string.
+    addstr(trophyExpiresStr);
+
     refresh();
+}
+/*
+ * Prints the current score to the screen.
+ */
+void print_score() {
+    move(0, SCORE_POS);
+    sprintf(gameScoreStr, "%d", score); // Convert the integer from the Score counter into a string.
+    addstr(gameScoreStr);
 }
 /***********************************************************************************************************************
 *  TROPHIES
@@ -562,22 +581,19 @@ void time_event(){
 ***********************************************************************************************************************/
 /* Initialize the trophy by allocating the struct to memory */
 void init_trophy() {
-    trophy = (struct trophy*)malloc(sizeof (struct trophy*));
+    trophy = malloc(sizeof (struct trophy*));
 }
 /* Outputs a new, randomly placed trophy.
  * The trophy avoids spawning inside the snake.
  */
-struct trophy new_trophy() {
-    // delete old
-    move(trophy->row, trophy->column);
-    addstr(" ");
+void new_trophy() {
     // We must place the trophy in a free, empty space.
     // Detect if the randomly generated coordinates are on the snake. If so, re-roll.
     int valid_space = 0;
     while(!valid_space) {
-        // Subtract 1 from both randomly picked values to avoid getting the trophy stuck in the wall
-        trophy->row = (rand() % window_row-1) - 5;
-        trophy->column = (rand() % window_col-1) - 5;
+        // Subtract values from both randomly picked values to avoid getting the trophy stuck in the wall
+        trophy->row = (rand() % (window_row-3)) + 2;
+        trophy->column = (rand() % (window_col-2)) + 1;
         // Use a scanner node to check if the trophy is in the snake.
         struct node* scanner = head;
         while(scanner != NULL) {
@@ -601,15 +617,18 @@ struct trophy new_trophy() {
 
     // Assign a random value to the trophy between 1 and 9.
     trophy->value = (rand() % 9) + 1;
+
+    // To avoid the trophy time growing into a massive number, reset it to 0 each time new trophy is called.
+    trophyTime = 0;
+    trophyExpires = TROPHY_MIN + (rand() % TROPHY_MAX);  // assign new interval
 }
 /* Display the trophy on the screen */
 void print_trophy() {
     // Convert the random value into a string for printing to the screen.
-    char* valueStr;
+    char valueStr[3];
     move(trophy->row, trophy->column);
     sprintf(valueStr, "%d", trophy->value);
     addstr(valueStr);
-    //refresh();
 }
 /* Detect if the snake has reached the trophy */
 int snake_hit_trophy() {
@@ -618,10 +637,10 @@ int snake_hit_trophy() {
         // This means the snake has successfully reached the trophy.
 
         // increase score by trophy value
-        score = score + trophy->value;
+        score += trophy->value;
 
         // increase speed by proportional factor to snake length
-        timeUnit = timeUnit - (0.5 * score);
+        timeUnit = ORIG_TIME_UNIT - (score/speedUpInterval);
 
         return 1;
     }
@@ -629,6 +648,7 @@ int snake_hit_trophy() {
     // The snake's head is not on a trophy.
     return 0;
 }
+
 /***********************************************************************************************************************
 *  TERMINAL SETTINGS
 *  by Nick Sabia
