@@ -9,7 +9,6 @@
 *
 *      NOTE: THIS IS FROM snake.c FROM LOGIC BRANCH PUSHED TO MAIN BRANCH ON 4/25
 *
-*  ** TODO: type up rules here **                                                                                      *
 ***********************************************************************************************************************/
 /** headers **/
 #include <sys/ioctl.h>
@@ -119,7 +118,9 @@ struct node *tail;
 /* trophy */
 struct trophy *trophy;
 /***********************************************************************************************************************
-*  DRIVER CODE                                                                                                         *
+*  DRIVER CODE
+*  time and while loops by Nick Sabia
+*  switch statement by Matt Mirga
 ***********************************************************************************************************************/
 /*
  *  main()
@@ -273,7 +274,8 @@ int main(){
     }
 }
 /***********************************************************************************************************************
-*  SNAKE PIT                                                                                                           *
+*  SNAKE PIT
+*  By Matt Mirga
 *  1. draw_pit_border                                                                                                  *
 *  2. pit_size                                                                                                         *                                                                                                        *
 ***********************************************************************************************************************/
@@ -458,9 +460,11 @@ void detect_collisions(){
 }
 /***********************************************************************************************************************
 *  LOGIC
-*  1) random function for start direction by Nick Sabia
-*  2) check for collision with wall or fruit with each movement
- * 3) another random function for randomly placing trophies
+*  by Justin Merville
+*  1) random function for start direction
+*  2) check for fail/success game conditions
+*  3) time event function for game executing game actions every second
+*  4) print score
 ***********************************************************************************************************************/
 /*
  *  1. choose_random_direction()
@@ -577,7 +581,7 @@ void print_score() {
 }
 /***********************************************************************************************************************
 *  TROPHIES
-*
+*  by Abigail Fenerty
 ***********************************************************************************************************************/
 /* Initialize the trophy by allocating the struct to memory */
 void init_trophy() {
